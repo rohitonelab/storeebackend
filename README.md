@@ -1,86 +1,118 @@
-# StoreeBackend - Scalable Video Generation Queue System
+# Story-to-Video Generation System
 
-A high-performance, priority-aware batching queue system for multimodal video generation, optimized for GPU utilization and request latency.
+A system for generating consistent character videos from stories using ComfyUI and MV-Adapter.
 
-## 🎯 Features
+## Architecture
 
-- Priority-based task queuing (Premium/Free tiers)
-- Concurrent batching for multiple task types
-- Horizontal scaling support
-- Fault tolerance and reliability mechanisms
-- GPU utilization optimization
+The system consists of two main components:
 
-## 🏗️ Architecture
+1. **ComfyUI Inference Service**: A Dockerized service for image generation
+2. **Agentic Backend**: Python-based agents for story processing and video generation
 
-The system consists of several key components:
+### Components
 
-- **Task Splitter**: Parses input stories into subtasks
-- **Batching Service**: Forms and manages task batches
-- **GPU Worker Interface**: Handles GPU pod communication
-- **Queue Management**: Redis-based priority queues
-- **Metadata Storage**: PostgreSQL/MongoDB for task tracking
+- `ReferenceImageAgent`: Handles reference image processing
+- `SceneAgent`: Splits stories into scenes
+- `ConsistentImageGenerationAgent`: Generates consistent images
+- `VideoComposerAgent`: Creates final videos
+- `ComfyClient`: Manages ComfyUI API interactions
 
-## 🚀 Getting Started
+## Setup
 
 ### Prerequisites
 
+- Docker and Docker Compose
+- NVIDIA GPU with CUDA support
 - Python 3.8+
-- Redis
-- PostgreSQL/MongoDB (optional)
-- Kubernetes cluster (for production)
 
 ### Installation
 
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Set up environment variables:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
-
-### Running Locally
-
+1. Clone the repository:
 ```bash
-python main.py
+git clone <your-repo-url>
+cd storeebackend
 ```
 
-## 📁 Project Structure
-
-```
-agent_backend/
-├── ingestion/          # Input parsing, story splitting
-├── batching/          # Batching system
-├── gpu_workers/       # GPU pod interface
-├── db/                # Database models and queue logic
-└── utils/             # Shared utilities
+2. Create required directories:
+```bash
+mkdir -p comfyui_service/{workflows,models,outputs,temp}
 ```
 
-## 🔧 Configuration
+3. Install Python dependencies:
+```bash
+pip install -r requirements.txt
+```
 
-Key configuration parameters in `.env`:
+4. Start the ComfyUI service:
+```bash
+cd comfyui_service
+docker-compose up -d
+```
 
-- `REDIS_HOST`: Redis server address
-- `REDIS_PORT`: Redis port
-- `GPU_SERVICE_URL`: GPU worker service endpoint
-- `BATCH_SIZE`: Maximum tasks per batch
-- `BATCH_TIMEOUT`: Maximum wait time for batch formation
+## Usage
 
-## 📊 Performance Metrics
+1. Initialize the agents:
+```python
+from MM_StoryAgent.agents import (
+    ReferenceImageAgent,
+    SceneAgent,
+    ConsistentImageGenerationAgent,
+    VideoComposerAgent
+)
 
-- Average processing time per story: ~60s
-- Batch formation timeout: 5s
-- Priority ratio (Premium:Free): 3:1
+# Initialize agents
+ref_agent = ReferenceImageAgent()
+scene_agent = SceneAgent()
+gen_agent = ConsistentImageGenerationAgent()
+video_agent = VideoComposerAgent()
+```
 
-## 🔐 Security
+2. Process a story:
+```python
+# Generate or use reference image
+ref_image = await ref_agent.process_reference(
+    story_id="your_story_id",
+    character_prompt="your character description"
+)
 
-- API key authentication
-- Secure callback URLs
-- Encrypted task payloads
+# Split story into scenes
+scenes = scene_agent.split_story(your_story_text)
+scene_agent.save_scenes("your_story_id", scenes)
 
-## 📝 License
+# Generate images
+generated_images = await gen_agent.generate_scenes(
+    story_id="your_story_id",
+    reference_image=ref_image,
+    scenes=scenes
+)
+
+# Create video
+final_video = video_agent.compose_video(
+    story_id="your_story_id",
+    image_paths=generated_images
+)
+```
+
+## Directory Structure
+
+```
+storeebackend/
+├── comfyui_service/
+│   ├── docker-compose.yml
+│   ├── workflows/
+│   │   └── mv_adapter_workflow.json
+│   ├── models/
+│   ├── outputs/
+│   └── temp/
+└── MM_StoryAgent/
+    ├── agents/
+    │   ├── reference_image_agent.py
+    │   ├── scene_agent.py
+    │   ├── consistent_image_agent.py
+    │   └── video_composer_agent.py
+    └── comfy_client.py
+```
+
+## License
 
 MIT License

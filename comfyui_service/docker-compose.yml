@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  comfyui:
+    image: comfyanonymous/comfyui:latest
+    ports:
+      - "8188:8188"
+    volumes:
+      - /mnt/data:/mnt/data  # Shared volume for story data
+      - ./workflows:/app/workflows  # Custom workflows
+      - ./models:/app/models  # Model files
+      - ./outputs:/app/output  # Generated outputs
+      - ./temp:/app/temp  # Temporary files
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - PYTHONUNBUFFERED=1
+      - COMFYUI_PORT=8188
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8188/history"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s 
